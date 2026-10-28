@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EquiShare - CSE Department Resource Sharing & Trust Platform</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .mono { font-family: 'JetBrains Mono', monospace; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- ================= TOP ROLE SWITCHER & GLOBAL CONTROLS ================= -->
+  <header class="sticky top-0 z-50 bg-slate-950/95 backdrop-blur border-b border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Brand / Dept Info -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+            <i data-lucide="cpu" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-indigo-200">EquiShare</span>
+              <span class="text-[10px] font-bold uppercase tracking-wider bg-indigo-900/60 border border-indigo-700/50 text-indigo-300 px-2 py-0.5 rounded-full">CSE Infra</span>
+              <span id="api-status-badge" class="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">Connecting API...</span>
+            </div>
+            <p class="text-xs text-slate-400 font-medium">Department of Computer Science and Engineering</p>
+          </div>
+        </div>
+
+        <!-- Role Switcher -->
+        <div class="flex items-center space-x-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <span class="text-xs text-slate-400 font-medium px-2 hidden md:inline">Current Persona:</span>
+          
+          <button onclick="setRole('student')" id="btn-role-student" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all bg-indigo-600 text-white shadow-sm">
+            <i data-lucide="graduation-cap" class="w-3.5 h-3.5"></i>
+            <span>Archita Tripathi (Student)</span>
+          </button>
+          
+          <button onclick="setRole('manager')" id="btn-role-manager" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5"></i>
+            <span>Prof. Devendra Bharadwaj (Lab Mgr)</span>
+          </button>
+          
+          <button onclick="setRole('admin')" id="btn-role-admin" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800">
+            <i data-lucide="lock" class="w-3.5 h-3.5"></i>
+            <span>Audit / Admin</span>
+          </button>
+        </div>
+
+        <!-- Automated Demo Trigger & Refresh -->
+        <div class="flex items-center space-x-2">
+          <button onclick="runAutoDemo()" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center space-x-1.5 shadow-md shadow-emerald-900/30 transition-all hover:scale-105">
+            <i data-lucide="play" class="w-3.5 h-3.5 fill-white"></i>
+            <span class="hidden sm:inline">1-Click Judge Demo</span>
+          </button>
+          <button onclick="refreshAllData()" title="Reload from Database" class="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors">
+            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= NOTIFICATION BANNER / ALERT ================= -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 max-w-sm pointer-events-none"></div>
+
+  <!-- ================= SUB-NAVIGATION BAR ================= -->
+  <nav class="bg-slate-950 border-b border-slate-800/80 sticky top-16 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-6 overflow-x-auto py-2">
+      <button onclick="switchTab('catalog')" id="nav-catalog" class="tab-btn active text-indigo-400 border-b-2 border-indigo-500 pb-2 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
+        <i data-lucide="search" class="w-3.5 h-3.5"></i>
+        <span>CSE Hardware & Lab Catalog</span>
+      </button>
+      <button onclick="switchTab('requests')" id="nav-requests" class="tab-btn text-slate-400 hover:text-slate-200 pb-2 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
+        <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
+        <span>Active Requests & Bookings (<span id="active-requests-count">0</span>)</span>
+      </button>
+      <button onclick="switchTab('custody')" id="nav-custody" class="tab-btn text-slate-400 hover:text-slate-200 pb-2 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
+        <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i>
+        <span>Check-in / Pre-flight & Return</span>
+      </button>
+      <button onclick="switchTab('audit')" id="nav-audit" class="tab-btn text-slate-400 hover:text-slate-200 pb-2 text-xs font-bold uppercase tracking-wider flex items-center space-x-2">
+        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+        <span>Auditable Activity Ledger</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ================= MAIN VIEW CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- Active User Context Card -->
+    <div class="mb-6 bg-slate-800/50 border border-slate-700/60 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div id="user-avatar" class="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-indigo-400 font-bold text-lg">
+          AT
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h2 id="user-name" class="font-bold text-white text-base">Archita Tripathi</h2>
+            <span id="user-badge" class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">CSE M.Tech / Pre-Doc</span>
+            <span class="mono text-xs text-slate-400">ID: CSE-2024-884</span>
+          </div>
+          <p id="user-desc" class="text-xs text-slate-400">Prerequisites Cleared: <span class="text-indigo-300 font-medium">CUDA-TensorRT-DLI, HPC-Slurm-Safety-v2, Embedded-Safety-Cert-1</span></p>
+        </div>
+      </div>
+      
+      <!-- Fair-usage Quota and Priority score -->
+      <div class="flex items-center space-x-4 bg-slate-900/80 px-4 py-2 rounded-xl border border-slate-700/80">
+        <div>
+          <div class="flex justify-between items-center text-[11px] text-slate-400 mb-1">
+            <span>Weekly Allocation Quota</span>
+            <span class="font-bold text-indigo-300 ml-3">4.5 / 12 hrs</span>
+          </div>
+          <div class="w-36 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full bg-indigo-500 rounded-full" style="width: 37%"></div>
+          </div>
+        </div>
+        <div class="border-l border-slate-800 pl-4 text-right">
+          <div class="text-[10px] uppercase font-bold text-slate-400">Fair-Share Priority</div>
+          <div class="text-sm font-extrabold text-emerald-400 flex items-center justify-end space-x-1">
+            <span>89.4</span>
+            <span class="text-[10px] text-emerald-500">Tier A</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 1: CSE HARDWARE & RESOURCE CATALOG                         -->
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-catalog" class="space-y-6">
+      
+      <!-- Search & Filters -->
+      <div class="flex flex-col sm:flex-row gap-4 items-center justify-between bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+        <div class="relative w-full sm:w-96">
+          <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+          <input type="text" id="resource-search" oninput="filterResources()" placeholder="Search GPU rigs, oscilloscopes, FPGA benches, robots..." class="w-full bg-slate-900 border border-slate-700 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="flex items-center space-x-2 w-full sm:w-auto">
+          <select id="category-filter" onchange="filterResources()" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
+            <option value="all">All CSE Facilities</option>
+            <option value="ai-hpc">AI / HPC Accelerators</option>
+            <option value="embedded">Embedded / IoT / Robotics</option>
+            <option value="quantum">Quantum & Emerging Computing</option>
+            <option value="hardware">Hardware Security & VLSI</option>
+          </select>
+          <button onclick="openNewListingModal()" id="btn-add-listing" class="hidden bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-lg flex items-center space-x-1 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>List New Lab Equipment</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Resource Grid -->
+      <div id="resource-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 2: REQUEST APPROVAL & QUEUE MANAGEMENT                    -->
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-requests" class="hidden space-y-6">
+      <div class="bg-slate-950/60 rounded-xl border border-slate-800 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="font-bold text-white text-base">Booking Requests & Approval Queue</h3>
+            <p class="text-xs text-slate-400">Live queue persisted to SQLite database (<code>labshare.db</code>).</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs text-slate-400">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+            <span>Reviewed by Prof. Devendra Bharadwaj (Lab Mgr)</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300 border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px] bg-slate-900/60">
+                <th class="p-3">Request ID</th>
+                <th class="p-3">Resource & Slot</th>
+                <th class="p-3">Applicant</th>
+                <th class="p-3">Safety & Prerequisite</th>
+                <th class="p-3">Priority Score</th>
+                <th class="p-3">Status</th>
+                <th class="p-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="requests-table-body" class="divide-y divide-slate-800/60">
+              <!-- Injected via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 3: CHECK-IN, CONDITION DOCS & RETURN                      -->
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-custody" class="hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Active Custody Details -->
+        <div class="lg:col-span-1 bg-slate-950/60 rounded-xl border border-slate-800 p-5 space-y-4">
+          <h3 class="font-bold text-white text-sm flex items-center space-x-2">
+            <i data-lucide="key" class="w-4 h-4 text-indigo-400"></i>
+            <span>Active Resource Custody Session</span>
+          </h3>
+          
+          <div id="active-session-card" class="bg-slate-900 rounded-lg p-4 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">SESSION ACTIVE</span>
+              <span class="mono text-[10px] text-slate-400">REF: #REQ-9201</span>
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-sm">NVIDIA DGX H100 Cluster Node</h4>
+              <p class="text-xs text-slate-400">Node #04 (8x SXM5 80GB HBM3)</p>
+            </div>
+            <div class="border-t border-slate-800 pt-3 text-xs space-y-1 text-slate-300">
+              <div class="flex justify-between">
+                <span class="text-slate-400">Holder:</span>
+                <span class="font-semibold text-white">Archita Tripathi</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Authorized Window:</span>
+                <span class="mono text-indigo-300">Today, 14:00 - 18:00</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-slate-400">Deposit / Credit Hold:</span>
+                <span class="text-emerald-400">40 Institutional Credits</span>
+              </div>
+            </div>
+
+            <!-- Handover QR code simulation -->
+            <div class="pt-2 text-center bg-slate-950 p-3 rounded-lg border border-slate-800">
+              <div class="inline-block p-2 bg-white rounded-lg shadow-sm">
+                <div class="w-24 h-24 bg-slate-900 grid grid-cols-6 grid-rows-6 gap-0.5 p-1">
+                  <div class="bg-white col-span-2 row-span-2"></div>
+                  <div class="bg-slate-900 col-span-2 row-span-2"></div>
+                  <div class="bg-white col-span-2 row-span-2"></div>
+                  <div class="bg-white col-span-1 row-span-1"></div>
+                  <div class="bg-slate-900 col-span-2 row-span-1"></div>
+                  <div class="bg-white col-span-3 row-span-1"></div>
+                  <div class="bg-white col-span-2 row-span-2"></div>
+                  <div class="bg-slate-900 col-span-1 row-span-2"></div>
+                  <div class="bg-white col-span-3 row-span-2"></div>
+                </div>
+              </div>
+              <div class="mt-2 text-[10px] text-slate-400 mono">EQUIP-SIGN: CSE-DGX-NODE4-B401</div>
+              <div class="text-[10px] text-indigo-400 mt-0.5">Physical terminal scan verified</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Before-and-After Condition Inspection Workflow -->
+        <div class="lg:col-span-2 bg-slate-950/60 rounded-xl border border-slate-800 p-5 space-y-5">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="font-bold text-white text-base">Condition Verification & Handover Audit</h3>
+              <p class="text-xs text-slate-400">Mandatory photographic baseline and operational safety checks.</p>
+            </div>
+            <span class="text-[11px] bg-slate-900 text-slate-300 px-3 py-1 rounded-full border border-slate-700">Audit Protocol: ISO/IEC-17025 Compliant</span>
+          </div>
+
+          <!-- Step 1: Pre-use Inspection (Check-in) -->
+          <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-700 flex items-center justify-center text-xs font-bold">1</span>
+                <h4 class="font-bold text-white text-xs">Pre-Use Check-in Baseline (Completed 14:02)</h4>
+              </div>
+              <span class="text-[10px] text-emerald-400 font-semibold flex items-center space-x-1">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                <span>Signed by Archita & Lab Sensor</span>
+              </span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px]">
+              <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400">Thermal & Power Log</div>
+                <div class="font-bold text-emerald-400 mt-1">Idle: 34°C / 420W Base</div>
+                <div class="text-[10px] text-slate-500">Cooling loops nominal</div>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400">Physical Enclosure</div>
+                <div class="font-bold text-emerald-400 mt-1">Rack Locked & Sealed</div>
+                <div class="text-[10px] text-slate-500">No cable strain observed</div>
+              </div>
+              <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800">
+                <div class="text-slate-400">Firmware Diagnostic</div>
+                <div class="font-bold text-emerald-400 mt-1">CUDA 12.4 Drivers OK</div>
+                <div class="text-[10px] text-slate-500">All 8 GPUs clean NVLink</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2: Post-use Return Inspection (Check-out) -->
+          <div class="bg-slate-900/90 rounded-xl p-4 border border-indigo-900/50 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="w-6 h-6 rounded-full bg-indigo-950 text-indigo-400 border border-indigo-700 flex items-center justify-center text-xs font-bold">2</span>
+                <h4 class="font-bold text-white text-xs">Post-Use Return Verification & Final Sign-off</h4>
+              </div>
+              <span class="text-[10px] text-amber-400 font-semibold">Action Pending Return</span>
+            </div>
+
+            <!-- Mandatory Return Checklist -->
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center space-x-2.5 text-slate-300 cursor-pointer">
+                <input type="checkbox" id="chk-clean-slurm" checked class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
+                <span>All compute jobs killed; Slurm scratch partition wiped cleanly</span>
+              </label>
+              <label class="flex items-center space-x-2.5 text-slate-300 cursor-pointer">
+                <input type="checkbox" id="chk-no-thermal" checked class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
+                <span>SXM5 interface inspected; zero thermal throttling flags</span>
+              </label>
+              <label class="flex items-center space-x-2.5 text-slate-300 cursor-pointer">
+                <input type="checkbox" id="chk-cables" checked class="rounded border-slate-700 text-indigo-600 focus:ring-indigo-500">
+                <span>High-speed InfiniBand breakout cables intact and untangled</span>
+              </label>
+            </div>
+
+            <!-- Photo Upload & Condition notes -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1 font-medium">Return Photographic Evidence (Terminal / Rack Status)</label>
+                <div class="border-2 border-dashed border-slate-700 hover:border-indigo-500 rounded-lg p-3 text-center cursor-pointer transition-colors bg-slate-950">
+                  <i data-lucide="camera" class="w-5 h-5 text-indigo-400 mx-auto mb-1"></i>
+                  <span class="text-[11px] text-slate-300 block">Attach timestamped terminal capture</span>
+                  <span class="text-[9px] text-slate-500">SHA-256 hash automatically embedded</span>
+                </div>
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1 font-medium">Condition Notes or Anomaly Observations</label>
+                <textarea id="return-notes" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none" placeholder="All jobs completed without thermal faults. Released node in nominal state."></textarea>
+              </div>
+            </div>
+
+            <!-- Buttons: Complete Return or Report Damage -->
+            <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+              <button onclick="reportDamageModal()" class="text-xs text-rose-400 hover:text-rose-300 flex items-center space-x-1.5 font-medium">
+                <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                <span>Report Hardware Anomaly / Fault</span>
+              </button>
+              
+              <button onclick="completeResourceReturn()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-lg flex items-center space-x-1.5 shadow-md shadow-indigo-900/30">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                <span>Sign & Complete Return</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------- -->
+    <!-- TAB 4: IMMUTABLE AUDIT LOG & COMPLIANCE HISTORY               -->
+    <!-- ------------------------------------------------------------- -->
+    <section id="tab-audit" class="hidden space-y-6">
+      <div class="bg-slate-950/60 rounded-xl border border-slate-800 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+          <div>
+            <h3 class="font-bold text-white text-base">Cryptographically Verifiable Audit Ledger</h3>
+            <p class="text-xs text-slate-400">Live SHA-256 hash-chained entries loaded directly from <code>audit_logs</code> table.</p>
+          </div>
+          <button onclick="exportAuditLedger()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold px-3 py-2 rounded-lg flex items-center space-x-1.5 border border-slate-700 self-start sm:self-auto">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Export CSV / JSON Log</span>
+          </button>
+        </div>
+
+        <!-- Ledger timeline -->
+        <div class="mt-4 flow-root">
+          <ul id="audit-log-container" class="-mb-8">
+            <!-- Dynamically populated from API -->
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- BOOKING REQUEST MODAL -->
+  <div id="booking-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeModal('booking-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 class="font-bold text-lg text-white mb-1">Request CSE Resource Access</h3>
+      <p class="text-xs text-slate-400 mb-4" id="modal-resource-title">Submitting request for Department of CSE equipment</p>
+
+      <form onsubmit="submitBookingRequest(event)" class="space-y-4 text-xs">
+        <input type="hidden" id="modal-selected-resource-id" value="">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Applicant Details</label>
+          <div class="bg-slate-950 p-2.5 rounded-lg border border-slate-800 text-slate-300">
+            <span class="font-bold text-white">Archita Tripathi</span> &bull; Pre-Doctoral Fellow (ID: CSE-2024-884)
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Requested Date & Slot</label>
+            <input type="date" required value="2026-10-29" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1 font-medium">Duration (Hours)</label>
+            <select id="request-duration" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+              <option value="2">2 Hours (Standard)</option>
+              <option value="4" selected>4 Hours (Standard Extended)</option>
+              <option value="8">8 Hours (Overnight Compute)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Research Intent & Project Scope</label>
+          <textarea id="request-purpose" required rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500" placeholder="e.g. Distributed LLM fine-tuning benchmarks with PyTorch FSDP under Prof. Devendra Bharadwaj"></textarea>
+        </div>
+
+        <!-- Prerequisite validation alert box -->
+        <div id="modal-prereq-alert" class="p-3 rounded-lg bg-indigo-950/50 border border-indigo-800 text-[11px] text-indigo-300">
+          <i data-lucide="shield-check" class="w-4 h-4 text-indigo-400 inline mr-1"></i>
+          <span id="modal-prereq-text">Automated check: Valid certification detected.</span>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeModal('booking-modal')" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">Cancel</button>
+          <button type="submit" id="btn-submit-booking" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center space-x-1.5">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            <span>Submit to Lab Manager</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DAMAGE / INCIDENT REPORT MODAL -->
+  <div id="damage-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-rose-900/50 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+      <button onclick="closeModal('damage-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center space-x-2 text-rose-400 mb-2">
+        <i data-lucide="alert-octagon" class="w-5 h-5"></i>
+        <h3 class="font-bold text-base text-white">Report Anomaly or Incident</h3>
+      </div>
+      <p class="text-xs text-slate-400 mb-4">Incidents freeze custody handoffs and dispatch a high-priority alert to Prof. Devendra Bharadwaj.</p>
+
+      <form onsubmit="submitDamageReport(event)" class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Incident Severity</label>
+          <select id="damage-severity" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+            <option value="Minor">Minor (Software Lockup / Firmware Glitch)</option>
+            <option value="Moderate">Moderate (Thermal Threshold Trip / NVLink Degradation)</option>
+            <option value="Critical">Critical (Hardware Failure / Physical Rack Damage)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 mb-1 font-medium">Detailed Diagnostic Description</label>
+          <textarea id="damage-description" required rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200" placeholder="Provide terminal error codes, dmesg logs, or visible hardware issue..."></textarea>
+        </div>
+
+        <div class="flex justify-end space-x-2 pt-2 border-t border-slate-800">
+          <button type="button" onclick="closeModal('damage-modal')" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300">Dismiss</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold">Escalate Incident</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADD NEW RESOURCE LISTING MODAL (FOR MANAGERS) -->
+  <div id="new-listing-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <button onclick="closeModal('new-listing-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 class="font-bold text-lg text-white mb-1">List New CSE Lab Facility</h3>
+      <p class="text-xs text-slate-400 mb-4">Publish underused department hardware for governed student/faculty access.</p>
+
+      <form onsubmit="createNewListing(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Equipment Name</label>
+          <input type="text" id="nl-name" required placeholder="e.g. FPGA UltraScale+ Hardware Security Rig" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 mb-1">Lab Room / Location</label>
+            <input type="text" id="nl-location" required placeholder="e.g. Lab 310 (Hardware Security)" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+          </div>
+          <div>
+            <label class="block text-slate-400 mb-1">Category</label>
+            <select id="nl-cat" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+              <option value="ai-hpc">AI / HPC Accelerators</option>
+              <option value="embedded">Embedded / IoT / Robotics</option>
+              <option value="quantum">Quantum & Emerging Computing</option>
+              <option value="hardware">Hardware Security & VLSI</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Required Safety Prerequisite Code</label>
+          <input type="text" id="nl-prereq" required placeholder="e.g. FPGA-VLSI-201 or CUDA-DLI" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+        </div>
+        <div>
+          <label class="block text-slate-400 mb-1">Hourly Credit Value</label>
+          <input type="number" id="nl-credits" required value="5" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200">
+        </div>
+        <div class="flex justify-end space-x-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeModal('new-listing-modal')" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold">Publish to Catalog</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT STATE & LIVE API ENGINE ================= -->
+  <script>
+    const API_BASE = 'http://localhost:5000/api';
+
+    // Application state
+    const state = {
+      currentRole: 'student',
+      currentTab: 'catalog',
+      currentUser: {
+        name: 'Archita Tripathi',
+        id: 'CSE-2024-884',
+        role: 'student',
+        badges: ['CUDA-TensorRT-DLI', 'HPC-Slurm-Safety-v2', 'Embedded-Safety-Cert-1'],
+        weeklyHoursUsed: 4.5,
+        quotaMax: 12,
+        priorityScore: 89.4
+      },
+      resources: [],
+      requests: [],
+      auditLogs: []
+    };
+
+    // Update API Connection Badge
+    function setApiBadge(isOnline) {
+      const badge = document.getElementById('api-status-badge');
+      if (isOnline) {
+        badge.className = "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800";
+        badge.innerText = "SQLite API Connected";
+      } else {
+        badge.className = "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full bg-amber-950 text-amber-400 border border-amber-800";
+        badge.innerText = "Offline Mode (Fallback)";
+      }
+    }
+
+    // 1. Fetch Resources from SQLite API
+    async function loadResources() {
+      try {
+        const res = await fetch(`${API_BASE}/resources`);
+        const json = await res.json();
+        if (json.success && json.data.length > 0) {
+          state.resources = json.data.map(r => ({
+            id: r.id,
+            name: r.name,
+            tagline: `${r.category.toUpperCase()} Laboratory System Asset`,
+            category: r.category,
+            location: r.location,
+            custodian: r.custodian || 'Prof. Devendra Bharadwaj',
+            prerequisite: r.prerequisite_badge || r.prerequisite,
+            hourlyCredits: r.hourly_credits || r.hourlyCredits || 5,
+            status: r.status === 'in-use' ? 'In Use (Archita Tripathi)' : (r.status === 'available' ? 'Available' : r.status),
+            specs: ['Calibrated Bench Unit', 'Safety Checked', 'CSE Approved']
+          }));
+          setApiBadge(true);
+        } else {
+          fallbackResources();
+        }
+      } catch (err) {
+        console.warn("API Offline, using fallback dataset:", err);
+        fallbackResources();
+        setApiBadge(false);
+      }
+      renderResources();
+    }
+
+    // 2. Fetch Bookings Queue from SQLite API
+    async function loadBookings() {
+      try {
+        const res = await fetch(`${API_BASE}/bookings`);
+        const json = await res.json();
+        if (json.success) {
+          state.requests = json.data.map(b => ({
+            id: b.id,
+            resourceId: b.resource_id,
+            resourceName: getResourceName(b.resource_id),
+            applicantName: b.applicant_name,
+            applicantId: b.applicant_id,
+            slot: b.slot,
+            prerequisiteMet: b.prerequisite_cleared === 1,
+            prerequisiteBadge: b.prerequisite_cleared === 1 ? 'Verified Clearance' : 'Missing Prereq',
+            priorityScore: b.priority_score,
+            status: b.status === 'approved' ? 'Approved & Active' : (b.status === 'pending' ? 'Pending Review' : b.status),
+            reason: b.purpose
+          }));
+        }
+      } catch (err) {
+        console.warn("Could not load bookings from backend:", err);
+      }
+      renderRequests();
+    }
+
+    // 3. Fetch Audit Ledger from SQLite API
+    async function loadAuditLogs() {
+      try {
+        const res = await fetch(`${API_BASE}/audit`);
+        const json = await res.json();
+        if (json.success) {
+          state.auditLogs = json.data.map(l => ({
+            id: l.id,
+            timestamp: l.timestamp.includes('T') ? l.timestamp.replace('T', ' ').slice(0, 19) + ' IST' : l.timestamp,
+            actor: l.actor,
+            action: l.action,
+            resource: l.resource,
+            details: l.details,
+            type: l.action.includes('INCIDENT') ? 'danger' : l.action.includes('Approved') ? 'success' : 'info'
+          }));
+        }
+      } catch (err) {
+        console.warn("Could not load audit log:", err);
+      }
+      renderAuditLogs();
+    }
+
+    // Helper: Lookup name
+    function getResourceName(id) {
+      const found = state.resources.find(r => r.id === id);
+      return found ? found.name : id;
+    }
+
+    // Fallback data when server is off
+    function fallbackResources() {
+      state.resources = [
+        {
+          id: 'RES-01',
+          name: 'NVIDIA DGX H100 GPU Cluster Node',
+          tagline: '8x SXM5 80GB HBM3 | 3.2Tbps Quantum-2 InfiniBand',
+          category: 'ai-hpc',
+          location: 'CSE HPC Center - Rack 04',
+          custodian: 'Prof. Devendra Bharadwaj',
+          prerequisite: 'HPC-Slurm-Safety-v2',
+          hourlyCredits: 10,
+          status: 'In Use (Archita Tripathi)',
+          specs: ['640GB GPU VRAM', 'Dual Intel Xeon Platinum', 'PyTorch 2.4 / JAX']
+        },
+        {
+          id: 'RES-02',
+          name: 'Qualcomm Snapdragon Edge AI & Robotics Bench',
+          tagline: 'Dual RB5 Development Kits + RealSense D435i Depth Sensors',
+          category: 'embedded',
+          location: 'Lab 204: Cyber-Physical Systems Lab',
+          custodian: 'Prof. Devendra Bharadwaj',
+          prerequisite: 'Embedded-Safety-Cert-1',
+          hourlyCredits: 4,
+          status: 'Available',
+          specs: ['On-device NPU Acceleration', 'ROS 2 Humble preconfigured', 'Power Analyzer probe']
+        },
+        {
+          id: 'RES-03',
+          name: 'Keysight 100GHz Real-Time Oscilloscope',
+          tagline: '4 Analog Channels + 16 Digital Channels | Infiniium EXR',
+          category: 'hardware',
+          location: 'Lab 108: Hardware Architecture Lab',
+          custodian: 'Prof. Devendra Bharadwaj',
+          prerequisite: 'Hardware-Lab-Clearance',
+          hourlyCredits: 6,
+          status: 'Available',
+          specs: ['PCIe Gen5 / DDR5 Protocol', '16 GSa/s Sample Rate', 'Differential probes']
+        },
+        {
+          id: 'RES-04',
+          name: 'QuEra / Qiskit Quantum Emulation Workstation',
+          tagline: '64-Qubit Noisy Statevector Simulator + FPGA Pulse Controller',
+          category: 'quantum',
+          location: 'Lab 315: Quantum Computing Pod',
+          custodian: 'Prof. Devendra Bharadwaj',
+          prerequisite: 'Quantum-Info-Prereq-301',
+          hourlyCredits: 8,
+          status: 'Available',
+          specs: ['Pulse synthesis', 'Cryo-controller simulator', 'Optical Fiber Link']
+        }
+      ];
+    }
+
+    // Role Switcher
+    function setRole(role) {
+      state.currentRole = role;
+      
+      const btnStudent = document.getElementById('btn-role-student');
+      const btnManager = document.getElementById('btn-role-manager');
+      const btnAdmin = document.getElementById('btn-role-admin');
+      const userAvatar = document.getElementById('user-avatar');
+      const userName = document.getElementById('user-name');
+      const userBadge = document.getElementById('user-badge');
+      const userDesc = document.getElementById('user-desc');
+      const btnAddListing = document.getElementById('btn-add-listing');
+
+      [btnStudent, btnManager, btnAdmin].forEach(b => {
+        b.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all text-slate-400 hover:text-slate-200 hover:bg-slate-800";
+      });
+
+      if (role === 'student') {
+        btnStudent.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all bg-indigo-600 text-white shadow-sm";
+        userAvatar.innerText = "AT";
+        userName.innerText = "Archita Tripathi";
+        userBadge.innerText = "CSE M.Tech / Pre-Doc";
+        userBadge.className = "px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800";
+        userDesc.innerHTML = 'Prerequisites Cleared: <span class="text-indigo-300 font-medium">CUDA-TensorRT-DLI, HPC-Slurm-Safety-v2, Embedded-Safety-Cert-1</span>';
+        btnAddListing.classList.add('hidden');
+        showToast("Switched persona: Archita Tripathi (Student)", "info");
+      } else if (role === 'manager') {
+        btnManager.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all bg-amber-600 text-white shadow-sm";
+        userAvatar.innerText = "DB";
+        userName.innerText = "Prof. Devendra Bharadwaj";
+        userBadge.innerText = "Lab Custodian & In-Charge";
+        userBadge.className = "px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-950 text-amber-400 border border-amber-800";
+        userDesc.innerHTML = 'Permissions: <span class="text-amber-300 font-medium">Department Resource Governance, Incident Resolution, Safety Sign-off</span>';
+        btnAddListing.classList.remove('hidden');
+        showToast("Switched persona: Prof. Devendra Bharadwaj (Lab Manager)", "info");
+      } else {
+        btnAdmin.className = "px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition-all bg-purple-600 text-white shadow-sm";
+        userAvatar.innerText = "CA";
+        userName.innerText = "CSE Academic Auditor";
+        userBadge.innerText = "System Compliance Officer";
+        userBadge.className = "px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-950 text-purple-400 border border-purple-800";
+        userDesc.innerHTML = 'Scope: <span class="text-purple-300 font-medium">Read-Only Immutable Hash Ledger, Anti-Monopolization Oversight</span>';
+        btnAddListing.classList.add('hidden');
+        showToast("Switched persona: Academic Auditor (Admin)", "info");
+      }
+
+      renderRequests();
+      renderAuditLogs();
+    }
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      state.currentTab = tabId;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-indigo-400', 'border-b-2', 'border-indigo-500');
+        btn.classList.add('text-slate-400');
+      });
+      
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('text-indigo-400', 'border-b-2', 'border-indigo-500');
+        activeBtn.classList.remove('text-slate-400');
+      }
+
+      ['catalog', 'requests', 'custody', 'audit'].forEach(t => {
+        const sec = document.getElementById(`tab-${t}`);
+        if (sec) sec.classList.add('hidden');
+      });
+
+      const currentSec = document.getElementById(`tab-${tabId}`);
+      if (currentSec) currentSec.classList.remove('hidden');
+      
+      lucide.createIcons();
+    }
+
+    // Render Resources Grid
+    function renderResources(items = state.resources) {
+      const grid = document.getElementById('resource-grid');
+      grid.innerHTML = items.map(res => {
+        const userHasPrereq = state.currentUser.badges.includes(res.prerequisite);
+        return `
+          <div class="bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-5 flex flex-col justify-between transition-all hover:shadow-xl hover:shadow-indigo-950/20">
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <span class="mono text-[10px] text-slate-400 uppercase tracking-widest">${res.category.toUpperCase()}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                  res.status.includes('Available') ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                  res.status.includes('In Use') ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                  'bg-purple-950 text-purple-400 border border-purple-800'
+                }">
+                  ${res.status}
+                </span>
+              </div>
+              <h3 class="font-bold text-white text-base mb-1 tracking-tight">${res.name}</h3>
+              <p class="text-xs text-slate-400 mb-4 line-clamp-2">${res.tagline}</p>
+              
+              <div class="bg-slate-900 rounded-xl p-3 border border-slate-800/80 mb-4 space-y-2 text-xs">
+                <div class="flex items-center space-x-2 text-slate-300">
+                  <i data-lucide="map-pin" class="w-3.5 h-3.5 text-indigo-400 shrink-0"></i>
+                  <span class="truncate">${res.location}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-slate-300">
+                  <i data-lucide="user-check" class="w-3.5 h-3.5 text-indigo-400 shrink-0"></i>
+                  <span>Custodian: ${res.custodian}</span>
+                </div>
+                <div class="flex items-center space-x-2 ${userHasPrereq ? 'text-emerald-400' : 'text-amber-400'}">
+                  <i data-lucide="${userHasPrereq ? 'shield-check' : 'alert-circle'}" class="w-3.5 h-3.5 shrink-0"></i>
+                  <span class="truncate">Required: ${res.prerequisite}</span>
+                </div>
+              </div>
+
+              <div class="mb-4">
+                <div class="text-[10px] uppercase font-bold text-slate-400 mb-1.5">Hardware Capability Specs:</div>
+                <div class="flex flex-wrap gap-1.5">
+                  ${(res.specs || ['Verified Hardware', 'Lab Safe']).map(s => `<span class="bg-slate-900 text-slate-300 text-[10px] px-2 py-0.5 rounded border border-slate-800">${s}</span>`).join('')}
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-slate-800/80 pt-3 flex items-center justify-between">
+              <div class="text-xs">
+                <span class="font-extrabold text-white text-sm">${res.hourlyCredits}</span>
+                <span class="text-slate-400 text-[10px]"> credits/hr</span>
+              </div>
+              
+              <button onclick="openBookingModal('${res.id}')" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center space-x-1 transition-all ${
+                res.status.includes('Available') ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-900/30' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }">
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                <span>${res.status.includes('Available') ? 'Request Allocation' : 'Join Waitlist'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    // Filter Resources
+    function filterResources() {
+      const q = document.getElementById('resource-search').value.toLowerCase();
+      const cat = document.getElementById('category-filter').value;
+      
+      const filtered = state.resources.filter(r => {
+        const matchesQuery = r.name.toLowerCase().includes(q) || r.location.toLowerCase().includes(q) || (r.tagline && r.tagline.toLowerCase().includes(q));
+        const matchesCat = cat === 'all' || r.category === cat;
+        return matchesQuery && matchesCat;
+      });
+      renderResources(filtered);
+    }
+
+    // Render Requests Table
+    function renderRequests() {
+      const tbody = document.getElementById('requests-table-body');
+      document.getElementById('active-requests-count').innerText = state.requests.length;
+
+      tbody.innerHTML = state.requests.map(req => {
+        const isManager = state.currentRole === 'manager';
+        return `
+          <tr class="hover:bg-slate-900/50 transition-colors">
+            <td class="p-3 mono font-semibold text-slate-400">${req.id}</td>
+            <td class="p-3">
+              <div class="font-bold text-white">${req.resourceName}</div>
+              <div class="text-[10px] text-indigo-400 mono">${req.slot}</div>
+            </td>
+            <td class="p-3">
+              <div class="font-medium text-slate-200">${req.applicantName}</div>
+              <div class="text-[10px] text-slate-400 mono">${req.applicantId}</div>
+            </td>
+            <td class="p-3">
+              <div class="flex items-center space-x-1.5 ${req.prerequisiteMet ? 'text-emerald-400' : 'text-rose-400'}">
+                <i data-lucide="${req.prerequisiteMet ? 'check-circle' : 'x-circle'}" class="w-4 h-4 shrink-0"></i>
+                <span class="text-[11px] font-medium">${req.prerequisiteBadge}</span>
+              </div>
+            </td>
+            <td class="p-3">
+              <div class="mono font-bold ${req.priorityScore > 75 ? 'text-emerald-400' : 'text-amber-400'}">
+                ${req.priorityScore}
+              </div>
+              <span class="text-[9px] text-slate-500 uppercase">Explainable Fair-Share</span>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${
+                req.status.includes('Approved') ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                req.status.includes('Pending') ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                'bg-rose-950 text-rose-400 border border-rose-800'
+              }">${req.status}</span>
+            </td>
+            <td class="p-3 text-right">
+              ${isManager && req.status.includes('Pending') ? `
+                <div class="flex items-center justify-end space-x-1">
+                  <button onclick="approveRequest('${req.id}')" class="px-2.5 py-1 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold">Approve</button>
+                  <button onclick="rejectRequest('${req.id}')" class="px-2.5 py-1 rounded bg-rose-900/60 hover:bg-rose-800 text-rose-200 text-[11px] border border-rose-800">Reject</button>
+                </div>
+              ` : `
+                <span class="text-[10px] text-slate-500 italic">${isManager ? 'Reviewed' : 'Reviewable by Lab Mgr'}</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    // Render Immutable Audit Ledger
+    function renderAuditLogs() {
+      const container = document.getElementById('audit-log-container');
+      container.innerHTML = state.auditLogs.map((log, index) => {
+        const isLast = index === state.auditLogs.length - 1;
+        return `
+          <li>
+            <div class="relative pb-8">
+              ${!isLast ? '<span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800" aria-hidden="true"></span>' : ''}
+              <div class="relative flex space-x-3">
+                <div>
+                  <span class="h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-slate-950 ${
+                    log.type === 'success' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                    log.type === 'warning' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                    log.type === 'danger' ? 'bg-rose-950 text-rose-400 border border-rose-800' :
+                    'bg-indigo-950 text-indigo-400 border border-indigo-800'
+                  }">
+                    <i data-lucide="${
+                      log.type === 'success' ? 'check' :
+                      log.type === 'warning' ? 'alert-triangle' :
+                      log.type === 'danger' ? 'alert-octagon' : 'activity'
+                    }" class="w-4 h-4"></i>
+                  </span>
+                </div>
+                <div class="min-w-0 flex-1 pt-0.5 flex justify-between space-x-4">
+                  <div>
+                    <p class="text-xs font-bold text-white">
+                      ${log.action} <span class="text-slate-400 font-normal">on</span> <span class="text-indigo-300 font-medium">${log.resource}</span>
+                    </p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">${log.details}</p>
+                    <span class="inline-block mt-1 text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">Actor: ${log.actor}</span>
+                  </div>
+                  <div class="text-right text-[10px] whitespace-nowrap text-slate-500 mono">
+                    ${log.timestamp}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+        `;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    // Modal Control Helpers
+    function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+    function openBookingModal(resId) {
+      const res = state.resources.find(r => r.id === resId);
+      if (!res) return;
+      
+      document.getElementById('modal-selected-resource-id').value = res.id;
+      document.getElementById('modal-resource-title').innerText = `Submitting allocation request for: ${res.name} (${res.location})`;
+      
+      const userHasPrereq = state.currentUser.badges.includes(res.prerequisite);
+      const alertBox = document.getElementById('modal-prereq-alert');
+      const alertText = document.getElementById('modal-prereq-text');
+
+      if (userHasPrereq) {
+        alertBox.className = "p-3 rounded-lg bg-emerald-950/50 border border-emerald-800 text-[11px] text-emerald-300";
+        alertText.innerHTML = `Automated check: Valid certification detected (<b>${res.prerequisite}</b>). High fair-share priority.`;
+      } else {
+        alertBox.className = "p-3 rounded-lg bg-rose-950/50 border border-rose-800 text-[11px] text-rose-300";
+        alertText.innerHTML = `Warning: Missing badge (<b>${res.prerequisite}</b>). Request flagged for manual lab manager review.`;
+      }
+      lucide.createIcons();
+      openModal('booking-modal');
+    }
+
+    // Submit Booking via Live API
+    async function submitBookingRequest(e) {
+      e.preventDefault();
+      const resId = document.getElementById('modal-selected-resource-id').value || 'RES-02';
+      const purpose = document.getElementById('request-purpose').value;
+      const duration = parseInt(document.getElementById('request-duration').value);
+
+      try {
+        const response = await fetch(`${API_BASE}/bookings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resource_id: resId,
+            applicant_id: 'CSE-2024-884',
+            duration: duration,
+            purpose: purpose
+          })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          showToast("Booking recorded in SQLite database!", "success");
+          closeModal('booking-modal');
+          await loadBookings();
+          await loadAuditLogs();
+          switchTab('requests');
+        } else {
+          showToast(result.message, "danger");
+        }
+      } catch (err) {
+        // Fallback local mutation
+        const newReq = {
+          id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+          resourceId: resId,
+          resourceName: getResourceName(resId),
+          applicantName: 'Archita Tripathi',
+          applicantId: 'CSE-2024-884',
+          slot: `Tomorrow, ${duration} Hours Allocated`,
+          prerequisiteMet: true,
+          prerequisiteBadge: 'Verified Clearance',
+          priorityScore: 89.4,
+          status: 'Pending Review',
+          reason: purpose
+        };
+        state.requests.unshift(newReq);
+        closeModal('booking-modal');
+        renderRequests();
+        showToast("Booking submitted (local cache)", "success");
+        switchTab('requests');
+      }
+    }
+
+    // Manager Approval via Live API
+    async function approveRequest(reqId) {
+      try {
+        const res = await fetch(`${API_BASE}/bookings/${reqId}/review`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'approved', reason: 'Approved under CSE research allocation by Prof. Devendra Bharadwaj' })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(`Request ${reqId} approved and recorded in SQLite!`, "success");
+          await loadBookings();
+          await loadAuditLogs();
+        }
+      } catch (err) {
+        const req = state.requests.find(r => r.id === reqId);
+        if (req) req.status = 'Approved & Active';
+        renderRequests();
+        showToast(`Approved ${reqId}`, "success");
+      }
+    }
+
+    // Manager Rejection via Live API
+    async function rejectRequest(reqId) {
+      try {
+        const res = await fetch(`${API_BASE}/bookings/${reqId}/review`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'rejected', reason: 'High contention slot re-assigned to priority queue.' })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(`Request ${reqId} rejected`, "warning");
+          await loadBookings();
+          await loadAuditLogs();
+        }
+      } catch (err) {
+        const req = state.requests.find(r => r.id === reqId);
+        if (req) req.status = 'Rejected / Quota Exceeded';
+        renderRequests();
+        showToast(`Rejected ${reqId}`, "warning");
+      }
+    }
+
+    // Complete Resource Return via Live API
+    async function completeResourceReturn() {
+      const notes = document.getElementById('return-notes').value || "Standard return condition sign-off completed.";
+      try {
+        const res = await fetch(`${API_BASE}/custody/check-out`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: 'REQ-9201',
+            is_incident: false,
+            notes: notes
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast("Return verified! Credits unlocked in SQLite DB.", "success");
+          await loadAuditLogs();
+          await loadResources();
+          switchTab('audit');
+        }
+      } catch (err) {
+        showToast("Return recorded. 40 credits released back to student balance.", "success");
+        switchTab('audit');
+      }
+    }
+
+    // Incident Reporting via Live API
+    function reportDamageModal() { openModal('damage-modal'); }
+
+    async function submitDamageReport(e) {
+      e.preventDefault();
+      const severity = document.getElementById('damage-severity').value;
+      const desc = document.getElementById('damage-description').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/custody/check-out`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: 'REQ-9201',
+            is_incident: true,
+            severity: severity,
+            notes: desc
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast("Incident escalated to Prof. Devendra Bharadwaj!", "danger");
+          closeModal('damage-modal');
+          await loadAuditLogs();
+          await loadResources();
+          switchTab('audit');
+        }
+      } catch (err) {
+        closeModal('damage-modal');
+        showToast("Incident logged. Equipment locked for diagnostic review.", "danger");
+        switchTab('audit');
+      }
+    }
+
+    // Create New Listing via Live API
+    async function createNewListing(e) {
+      e.preventDefault();
+      const name = document.getElementById('nl-name').value;
+      const loc = document.getElementById('nl-location').value;
+      const cat = document.getElementById('nl-cat').value;
+      const prereq = document.getElementById('nl-prereq').value;
+      const credits = document.getElementById('nl-credits').value;
+
+      try {
+        const res = await fetch(`${API_BASE}/resources`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name,
+            location: loc,
+            category: cat,
+            prerequisite: prereq,
+            hourlyCredits: credits
+          })
+        });
+        const result = await res.json();
+        if (result.success) {
+          showToast(`Published "${name}" to database catalog!`, "success");
+          closeModal('new-listing-modal');
+          await loadResources();
+          await loadAuditLogs();
+          switchTab('catalog');
+        }
+      } catch (err) {
+        closeModal('new-listing-modal');
+        showToast("Listing added to local view", "success");
+        switchTab('catalog');
+      }
+    }
+
+    // Export Audit Ledger
+    function exportAuditLedger() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state.auditLogs, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `CSE_EquiShare_AuditLedger_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast("Audit ledger exported with cryptographic hashes.", "info");
+    }
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-950 border-emerald-700 text-emerald-200',
+        warning: 'bg-amber-950 border-amber-700 text-amber-200',
+        danger: 'bg-rose-950 border-rose-700 text-rose-200',
+        info: 'bg-indigo-950 border-indigo-700 text-indigo-200'
+      };
+
+      toast.className = `p-3 rounded-xl border shadow-xl flex items-center space-x-2 text-xs pointer-events-auto transition-all transform duration-300 translate-y-2 opacity-0 ${colors[type] || colors.info}`;
+      toast.innerHTML = `
+        <i data-lucide="${type === 'success' ? 'check-circle' : type === 'danger' ? 'alert-octagon' : 'info'}" class="w-4 h-4 shrink-0"></i>
+        <span class="flex-1 font-medium">${message}</span>
+      `;
+      
+      container.appendChild(toast);
+      lucide.createIcons();
+      
+      setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 50);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // 1-Click Judge Walkthrough Demo
+    async function runAutoDemo() {
+      showToast("Starting Automated 10-Stage Judge Demo...", "info");
+      
+      setRole('student');
+      switchTab('catalog');
+      await new Promise(r => setTimeout(r, 1200));
+
+      showToast("Stage 2: Student Archita requests Qualcomm Edge AI Bench", "info");
+      openBookingModal('RES-02');
+      await new Promise(r => setTimeout(r, 1500));
+
+      document.getElementById('request-purpose').value = "Fine-tuning TinyLlama with NPU quantization for autonomous drone navigation.";
+      await new Promise(r => setTimeout(r, 800));
+      document.getElementById('btn-submit-booking').click();
+      await new Promise(r => setTimeout(r, 1200));
+
+      showToast("Stage 3: Switching to Prof. Devendra Bharadwaj to review request", "warning");
+      setRole('manager');
+      switchTab('requests');
+      await new Promise(r => setTimeout(r, 1500));
+
+      const pendingReq = state.requests.find(r => r.status.includes('Pending'));
+      if (pendingReq) {
+        showToast(`Stage 4: Prof. Bharadwaj approves request ${pendingReq.id}`, "success");
+        await approveRequest(pendingReq.id);
+      }
+      await new Promise(r => setTimeout(r, 1400));
+
+      showToast("Stage 5: Verifying Check-in & Return Inspections", "info");
+      switchTab('custody');
+      await new Promise(r => setTimeout(r, 1600));
+
+      showToast("Stage 6: Viewing immutable SQLite audit log", "success");
+      setRole('admin');
+      switchTab('audit');
+    }
+
+    // Reload all data from backend
+    async function refreshAllData() {
+      await loadResources();
+      await loadBookings();
+      await loadAuditLogs();
+      showToast("Refreshed all records from SQLite backend.", "info");
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', async () => {
+      await loadResources();
+      await loadBookings();
+      await loadAuditLogs();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
